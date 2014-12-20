@@ -20,9 +20,6 @@ public:
     void Start(lua_State* L);
     void Stop(lua_State* L);
 
-    // hook function for lua
-    static void Hook(lua_State* L, lua_Debug* ar);
-
     // singleton
     static LuaProfiler* Get() { return &_self; }
 
@@ -33,6 +30,9 @@ public:
 
 private:
     void set_current(lua_Debug* ar);
+
+    // hook function for lua
+    static void hook(lua_State* L, lua_Debug* ar);
 
     std::string node_key_get(lua_Debug* ar) const;
     LuaProfilerNode* node_get(const std::string& key);

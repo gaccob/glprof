@@ -76,7 +76,7 @@ struct LuaCallStack {
         // parent's child elapse
         if (!frames.empty()) {
             Frame& parent = frames.back();
-            parent.child_elapse = elapse;
+            parent.child_elapse += elapse;
         }
 
         // tailcall recursive pop
@@ -85,11 +85,14 @@ struct LuaCallStack {
         }
     }
 
-    void Debug() {
+    void Debug(const std::string& name, int event) {
+        printf("%s event=%d:\n", name.c_str(), event);
         for (size_t i = 0; i < frames.size(); ++ i) {
-            printf("%s: enter[%llu] quit[%llu]", frames[i].node->key.c_str(),
-                frames[i].enter_stamp, frames[i].exit_stamp);
+            printf("\t%s: enter[%llu] quit[%llu] full[%llu] child[%llu] inner[%llu]\n",
+                frames[i].node->key.c_str(), frames[i].enter_stamp, frames[i].exit_stamp,
+                frames[i].node->full_elapse, frames[i].child_elapse, frames[i].node->inner_elapse);
         }
+        printf("\n");
     }
 
 };
@@ -125,7 +128,7 @@ void LuaProfiler::Start(lua_State* L)
     if (!IsStarted()) {
         _origin_hook = lua_gethook(L);
         _origin_mask = lua_gethookmask(L);
-        lua_sethook(L, Hook, _origin_mask | LUA_MASKCALL | LUA_MASKRET | LUA_HOOKTAILCALL, lua_gethookcount(L));
+        lua_sethook(L, hook, _origin_mask | LUA_MASKCALL | LUA_MASKRET | LUA_HOOKTAILCALL, lua_gethookcount(L));
         _started = true;
     }
 }
@@ -152,11 +155,11 @@ std::string LuaProfiler::node_key_get(lua_Debug* ar) const
     char key[1024];
     key[0] = 0;
     if (_current_is_lua == 0) {
-        snprintf(key, sizeof(key), "[%s]:%d", ar->source, ar->linedefined);
+        snprintf(key, sizeof(key), "%s:%d", ar->source, ar->linedefined);
     } else if (_current_is_main == 0) {
-        snprintf(key, sizeof(key), "[main]:%d", ar->linedefined);
+        snprintf(key, sizeof(key), "main:%d", ar->linedefined);
     } else if (_current_is_native == 0) {
-        snprintf(key, sizeof(key), "[native]:%s", ar->name ? ar->name : "null");
+        snprintf(key, sizeof(key), "native:%s", ar->name ? ar->name : "null");
     }
     return std::string(key);
 }
@@ -180,13 +183,13 @@ LuaProfilerNode* LuaProfiler::node_create(const std::string& key, lua_Debug* ar)
     } else if (ar->namewhat && ar->namewhat[0]) {
         node->func = std::string(ar->namewhat);
     } else {
-        node->func = "null";
+        node->func = key;
     }
     _nodes.insert(std::make_pair(node->key, node));
     return node;
 }
 
-void LuaProfiler::Hook(lua_State* L, lua_Debug* ar)
+void LuaProfiler::hook(lua_State* L, lua_Debug* ar)
 {
     LuaProfiler* lp = LuaProfiler::Get();
 
@@ -196,7 +199,11 @@ void LuaProfiler::Hook(lua_State* L, lua_Debug* ar)
     }
 
     // catch only call & return & tail-call
-    assert(ar->event == LUA_HOOKCALL || ar->event == LUA_HOOKRET || ar->event == LUA_HOOKTAILCALL);
+    if (ar->event != LUA_HOOKCALL
+        && ar->event != LUA_HOOKRET
+        && ar->event != LUA_HOOKTAILCALL) {
+        return;
+    }
 
     // get debug info
     ar->name = NULL;
@@ -226,7 +233,7 @@ void LuaProfiler::Hook(lua_State* L, lua_Debug* ar)
         lp->_stack->Push(node, true);
     }
 
-    lp->_stack->Debug();
+    // lp->_stack->Debug(key, ar->event);
 }
 
 void LuaProfiler::Dump(const std::string& file)
@@ -237,19 +244,23 @@ void LuaProfiler::Dump(const std::string& file)
         assert(0);
         return;
     }
-    fs << "---- lua profile ----" << std::endl;
-    fs << "[position],\t[function],\t[call times],\t[average cost],\t[average inner cost]" << std::endl;
-    for (std::map<std::string, LuaProfilerNode*>::iterator it = _nodes.begin(); it != _nodes.end(); ++ it) {
+    fs << "[position],              "
+       << "[function],              "
+       << "[call times],            "
+       << "[average cost],          "
+       << "[average inner cost]" << std::endl;
+    std::map<std::string, LuaProfilerNode*>::iterator it;
+    for (it = _nodes.begin(); it != _nodes.end(); ++ it) {
         LuaProfilerNode* node = it->second;
         if (node->call_count > 0) {
-            fs << node->key << ",\t"
-               << node->func << ",\t"
-               << node->call_count << ",\t"
-               << node->full_elapse / node->call_count << ",\t"
+            fs << node->key << ",\t\t"
+               << node->func << ",\t\t"
+               << node->call_count << ",\t\t"
+               << node->full_elapse / node->call_count << ",\t\t"
                << node->inner_elapse / node->call_count << std::endl;
         }
     }
-    fs << "---- lua profile ----" << std::endl;
+    fs << std::endl;
     fs.close();
 }
 
