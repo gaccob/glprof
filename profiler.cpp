@@ -1,4 +1,5 @@
 #include <strings.h>
+#include <iomanip>
 #include <fstream>
 #include <sstream>
 
@@ -254,20 +255,21 @@ void LuaProfiler::Dump2File(const std::string& file) const
 std::string LuaProfiler::DumpString() const
 {
     std::stringstream ss;
-    ss << "[position],              "
-       << "[function],              "
-       << "[call times],            "
-       << "[average cost],          "
-       << "[average inner cost]" << std::endl;
+#define _align() std::setiosflags(std::ios::left) << std::setw(30)
+    ss << _align() << "[position]"
+       << _align() << "[function]"
+       << _align() << "[call times]"
+       << _align() << "[average cost]"
+       << _align() << "[average inner cost]" << std::endl;
     std::map<std::string, LuaProfilerNode*>::const_iterator it;
     for (it = _nodes.begin(); it != _nodes.end(); ++ it) {
         LuaProfilerNode* node = it->second;
         if (node->call_count > 0) {
-            ss << node->key << ",\t\t"
-               << node->func << ",\t\t"
-               << node->call_count << ",\t\t"
-               << node->full_elapse / node->call_count << ",\t\t"
-               << node->inner_elapse / node->call_count << std::endl;
+            ss << _align() << node->key
+               << _align() << node->func
+               << _align() << node->call_count
+               << _align() << node->full_elapse / node->call_count
+               << _align() <<  node->inner_elapse / node->call_count << std::endl;
         }
     }
     ss << std::endl;
