@@ -91,7 +91,7 @@ struct LuaCallStack {
     void Debug(const std::string& name, int event) {
         printf("%s event=%d:\n", name.c_str(), event);
         for (size_t i = 0; i < frames.size(); ++ i) {
-        #ifdef __x86_64
+        #if defined(__x86_64) && !defined(__APPLE__)
             printf("\t%s: enter[%lu] quit[%lu] full[%lu] child[%lu] inner[%lu]\n",
         #else
             printf("\t%s: enter[%llu] quit[%llu] full[%llu] child[%llu] inner[%llu]\n",
