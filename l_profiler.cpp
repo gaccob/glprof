@@ -12,19 +12,26 @@ static int l_profiler_stop(lua_State* L) {
     return 0;
 }
 
-static int l_profiler_dump(lua_State* L) {
+static int l_profiler_dump_file(lua_State* L) {
     const char* file = luaL_checkstring(L, -1);
-    LuaProfiler::Get()->Dump(file);
+    LuaProfiler::GetConst()->Dump2File(file);
     return 0;
+}
+
+static int l_profiler_dump_string(lua_State* L) {
+    std::string dump = LuaProfiler::GetConst()->DumpString();
+    lua_pushstring(L, dump.c_str());
+    return 1;
 }
 
 extern "C"
 int luaopen_l_profiler(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
-        {"start",   l_profiler_start },
-        {"stop",    l_profiler_stop },
-        {"dump",    l_profiler_dump },
+        {"start",       l_profiler_start },
+        {"stop",        l_profiler_stop },
+        {"dump_file",   l_profiler_dump_file },
+        {"dump_string", l_profiler_dump_string },
         {NULL,      NULL },
     };
     luaL_newlib(L, l);

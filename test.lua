@@ -24,5 +24,5 @@ test_c()
 test_b()
 test_c()
 
-lp.dump("profiler.csv")
+print(lp.dump_string())
 lp.stop()

@@ -1,4 +1,6 @@
+#include <strings.h>
 #include <fstream>
+#include <sstream>
 
 #include "profiler.h"
 #include "tsc.h"
@@ -88,7 +90,11 @@ struct LuaCallStack {
     void Debug(const std::string& name, int event) {
         printf("%s event=%d:\n", name.c_str(), event);
         for (size_t i = 0; i < frames.size(); ++ i) {
+        #ifdef __x86_64
+            printf("\t%s: enter[%lu] quit[%lu] full[%lu] child[%lu] inner[%lu]\n",
+        #else
             printf("\t%s: enter[%llu] quit[%llu] full[%llu] child[%llu] inner[%llu]\n",
+        #endif
                 frames[i].node->key.c_str(), frames[i].enter_stamp, frames[i].exit_stamp,
                 frames[i].node->full_elapse, frames[i].child_elapse, frames[i].node->inner_elapse);
         }
@@ -236,31 +242,35 @@ void LuaProfiler::hook(lua_State* L, lua_Debug* ar)
     // lp->_stack->Debug(key, ar->event);
 }
 
-void LuaProfiler::Dump(const std::string& file)
+void LuaProfiler::Dump2File(const std::string& file) const
 {
     std::fstream fs;
     fs.open(file, std::ios::out);
-    if (!fs.is_open()) {
-        assert(0);
-        return;
-    }
-    fs << "[position],              "
+    assert(fs.is_open());
+    fs << DumpString();
+    fs.close();
+}
+
+std::string LuaProfiler::DumpString() const
+{
+    std::stringstream ss;
+    ss << "[position],              "
        << "[function],              "
        << "[call times],            "
        << "[average cost],          "
        << "[average inner cost]" << std::endl;
-    std::map<std::string, LuaProfilerNode*>::iterator it;
+    std::map<std::string, LuaProfilerNode*>::const_iterator it;
     for (it = _nodes.begin(); it != _nodes.end(); ++ it) {
         LuaProfilerNode* node = it->second;
         if (node->call_count > 0) {
-            fs << node->key << ",\t\t"
+            ss << node->key << ",\t\t"
                << node->func << ",\t\t"
                << node->call_count << ",\t\t"
                << node->full_elapse / node->call_count << ",\t\t"
                << node->inner_elapse / node->call_count << std::endl;
         }
     }
-    fs << std::endl;
-    fs.close();
+    ss << std::endl;
+    return ss.str();
 }
 

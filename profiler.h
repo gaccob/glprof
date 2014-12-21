@@ -22,11 +22,13 @@ public:
 
     // singleton
     static LuaProfiler* Get() { return &_self; }
+    static const LuaProfiler* GetConst() { return &_self; }
 
     bool IsStarted() const { return _started; }
 
     // dump profiler
-    void Dump(const std::string& file);
+    void Dump2File(const std::string& file) const;
+    std::string DumpString() const;
 
 private:
     void set_current(lua_Debug* ar);
