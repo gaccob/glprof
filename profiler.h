@@ -20,6 +20,8 @@ public:
     void Start(lua_State* L);
     void Stop(lua_State* L);
 
+    void CleanUp();
+
     // singleton
     static LuaProfiler* Get() { return &_self; }
     static const LuaProfiler* GetConst() { return &_self; }

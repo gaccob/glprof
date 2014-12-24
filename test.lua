@@ -21,8 +21,18 @@ function test_c()
 end
 
 test_c()
-test_b()
+
+print(lp.dump_string())
+
 test_c()
 
 print(lp.dump_string())
 lp.stop()
+lp.cleanup()
+lp.start()
+
+test_c()
+
+print(lp.dump_string())
+lp.stop()
+

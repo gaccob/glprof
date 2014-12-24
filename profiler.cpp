@@ -54,6 +54,8 @@ struct LuaCallStack {
     };
     std::vector<Frame> frames;
 
+    void Reset() { frames.clear(); }
+
     void Push(LuaProfilerNode* node, bool tailcall = false) {
         Frame f;
         f.node = node;
@@ -96,8 +98,8 @@ struct LuaCallStack {
         #else
             printf("\t%s: enter[%llu] quit[%llu] full[%llu] child[%llu] inner[%llu]\n",
         #endif
-                frames[i].node->key.c_str(), frames[i].enter_stamp, frames[i].exit_stamp,
-                frames[i].node->full_elapse, frames[i].child_elapse, frames[i].node->inner_elapse);
+            frames[i].node->key.c_str(), frames[i].enter_stamp, frames[i].exit_stamp,
+            frames[i].node->full_elapse, frames[i].child_elapse, frames[i].node->inner_elapse);
         }
         printf("\n");
     }
@@ -119,13 +121,7 @@ LuaProfiler::LuaProfiler()
 
 LuaProfiler::~LuaProfiler()
 {
-    for (std::map<std::string, LuaProfilerNode*>::iterator it = _nodes.begin();
-        it != _nodes.end(); ++ it) {
-        delete it->second;
-        it->second = NULL;
-    }
-    _nodes.clear();
-
+    CleanUp();
     delete _stack;
     _stack = NULL;
 }
@@ -148,6 +144,17 @@ void LuaProfiler::Stop(lua_State* L)
         _origin_mask = 0;
         _started = false;
     }
+}
+
+void LuaProfiler::CleanUp()
+{
+    for (std::map<std::string, LuaProfilerNode*>::iterator it = _nodes.begin();
+        it != _nodes.end(); ++ it) {
+        delete it->second;
+        it->second = NULL;
+    }
+    _nodes.clear();
+    _stack->Reset();
 }
 
 void LuaProfiler::set_current(lua_Debug* ar)

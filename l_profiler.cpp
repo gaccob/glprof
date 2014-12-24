@@ -12,6 +12,11 @@ static int l_profiler_stop(lua_State* L) {
     return 0;
 }
 
+static int l_profiler_cleanup(lua_State* L) {
+    LuaProfiler::Get()->CleanUp();
+    return 0;
+}
+
 static int l_profiler_dump_file(lua_State* L) {
     const char* file = luaL_checkstring(L, -1);
     LuaProfiler::GetConst()->Dump2File(file);
@@ -30,6 +35,7 @@ int luaopen_l_profiler(lua_State *L) {
     luaL_Reg l[] = {
         {"start",       l_profiler_start },
         {"stop",        l_profiler_stop },
+        {"cleanup",     l_profiler_cleanup },
         {"dump_file",   l_profiler_dump_file },
         {"dump_string", l_profiler_dump_string },
         {NULL,      NULL },
